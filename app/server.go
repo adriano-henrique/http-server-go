@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
+const ()
+
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
@@ -43,6 +44,8 @@ func handleConnection(conn net.Conn) {
 	if url == "/" {
 		fmt.Print("Responding with HTTP/1.1 200 OK\r\n\r\n")
 		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	} else if strings.Contains(url, "/echo") {
+		handleEcho(conn, url)
 	} else {
 		fmt.Print("Responding with HTTP/1.1 404 Not Found\r\n\r\n")
 		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
@@ -53,4 +56,14 @@ func parseStartLine(requestContent string) (string, string, string) {
 	startLine := strings.Split(requestContent, "\r\n")[0]
 	requestParts := strings.Split(startLine, " ")
 	return strings.TrimSpace(requestParts[0]), strings.TrimSpace(requestParts[1]), strings.TrimSpace(requestParts[2])
+}
+
+func handleEcho(conn net.Conn, url string) {
+	urlParams := strings.Split(url, "/")
+	echoedString := urlParams[2]
+	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\n\r\nContent-Type: text/plain\r\n\r\nContent-length: %d\r\n\r\n%s\r\n\r\n", len(echoedString), echoedString)
+
+	fmt.Printf("Responding with %s\n", outputString)
+
+	conn.Write([]byte(outputString))
 }
