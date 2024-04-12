@@ -59,11 +59,11 @@ func parseStartLine(requestContent string) (string, string, string) {
 }
 
 func handleEcho(conn net.Conn, url string) {
-	urlParams := strings.Split(url, "/")
+	urlParams := strings.SplitN(url, "/", 3)
 	echoedString := urlParams[2]
 	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\n\r\nContent-Type: text/plain\r\n\r\nContent-length: %d\r\n\r\n%s\r\n\r\n", len(echoedString), echoedString)
 
-	fmt.Printf("Responding with %s\n", outputString)
+	fmt.Printf("Response:\n%s", outputString)
 
 	conn.Write([]byte(outputString))
 }
