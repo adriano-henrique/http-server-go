@@ -39,23 +39,25 @@ func handleConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 	requestContent := string(readBuffer[:readValue])
-	fmt.Print("Received request: ", requestContent)
-	_, url, _ := parseStartLine(requestContent)
-	if url == "/" {
+	requestHeader := ParseRequest(requestContent)
+	fmt.Print("Received request: \n")
+	requestHeader.prettyPrint()
+	if requestHeader.method.url == "/" {
 		fmt.Print("Responding with HTTP/1.1 200 OK\r\n\r\n")
 		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	} else if strings.Contains(url, "/echo") {
-		handleEcho(conn, url)
+	} else if strings.Contains(requestHeader.method.url, "/echo") {
+		handleEcho(conn, requestHeader.method.url)
+	} else if strings.Contains(requestHeader.method.url, "/user-agent") {
+		handleUserAgent(conn, requestHeader.userAgent)
 	} else {
 		fmt.Print("Responding with HTTP/1.1 404 Not Found\r\n\r\n")
 		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 	}
 }
 
-func parseStartLine(requestContent string) (string, string, string) {
-	startLine := strings.Split(requestContent, "\r\n")[0]
-	requestParts := strings.Split(startLine, " ")
-	return strings.TrimSpace(requestParts[0]), strings.TrimSpace(requestParts[1]), strings.TrimSpace(requestParts[2])
+func handleUserAgent(conn net.Conn, userAgent string) {
+	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-length: %d\r\n\r\n%s\r\n", len(userAgent), userAgent)
+	conn.Write([]byte(outputString))
 }
 
 func handleEcho(conn net.Conn, url string) {
