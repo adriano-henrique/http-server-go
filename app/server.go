@@ -7,11 +7,7 @@ import (
 	"strings"
 )
 
-const ()
-
 func main() {
-	fmt.Println("Logs from your program will appear here!")
-
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	fmt.Println("Server listening on 0.0.0.0:4221")
 	if err != nil {
@@ -19,6 +15,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	defer l.Close()
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -32,39 +29,45 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	readBuffer := make([]byte, 1024)
-	readValue, err := conn.Read(readBuffer)
+	_, err := conn.Read(readBuffer)
 	if err != nil {
 		fmt.Println("error reading buffer: ", err.Error())
-		os.Exit(1)
+		return
 	}
-	requestContent := string(readBuffer[:readValue])
+	requestContent := string(readBuffer)
 	requestHeader := ParseRequest(requestContent)
 	fmt.Print("Received request: \n")
 	requestHeader.prettyPrint()
-	if requestHeader.method.url == "/" {
-		fmt.Print("Responding with HTTP/1.1 200 OK\r\n\r\n")
-		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	} else if strings.Contains(requestHeader.method.url, "/echo") {
-		handleEcho(conn, requestHeader.method.url)
-	} else if strings.Contains(requestHeader.method.url, "/user-agent") {
-		handleUserAgent(conn, requestHeader.userAgent)
+	var response []byte
+	path := requestHeader.method.url
+	if path == "/" {
+		response = []byte("HTTP/1.1 200 OK\r\n\r\n")
+	} else if strings.HasPrefix(path, "/echo") {
+		response = handleEcho(path)
+	} else if strings.HasPrefix(path, "/user-agent") {
+		response = handleUserAgent(requestHeader.userAgent)
 	} else {
-		fmt.Print("Responding with HTTP/1.1 404 Not Found\r\n\r\n")
-		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+		response = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+	}
+
+	_, err = conn.Write(response)
+	if err != nil {
+		fmt.Println("found an error trying to respond")
+		return
 	}
 }
 
-func handleUserAgent(conn net.Conn, userAgent string) {
+func handleUserAgent(userAgent string) []byte {
 	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-length: %d\r\n\r\n%s\r\n", len(userAgent), userAgent)
-	conn.Write([]byte(outputString))
+	return []byte(outputString)
 }
 
-func handleEcho(conn net.Conn, url string) {
+func handleEcho(url string) []byte {
 	urlParams := strings.SplitN(url, "/", 3)
 	echoedString := urlParams[2]
 	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-length: %d\r\n\r\n%s\r\n", len(echoedString), echoedString)
 
 	fmt.Printf("Response:\n%s", outputString)
 
-	conn.Write([]byte(outputString))
+	return []byte(outputString)
 }

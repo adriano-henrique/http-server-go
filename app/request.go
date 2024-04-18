@@ -17,8 +17,26 @@ type RequestHeader struct {
 	userAgent string
 }
 
+func removeWhitespaceFromEOF(list []string) []string {
+	var result []string
+	for i := 0; i < len(list); i++ {
+		if strings.TrimSpace(list[i]) != "" {
+			result = append(result, list[i])
+		}
+	}
+	return result
+}
+
 func ParseRequest(requestContent string) *RequestHeader {
-	parsedRequest := strings.Split(requestContent, "\r\n")
+	headerEndIndex := strings.Index(requestContent, "\r\n\r\n")
+	var header string
+	if headerEndIndex != -1 {
+		header = requestContent[:headerEndIndex]
+	} else {
+		// If double newline is not found, consider the whole string as header
+		header = requestContent
+	}
+	parsedRequest := removeWhitespaceFromEOF(strings.Split(header, "\r\n"))
 	methodLine := strings.Split(parsedRequest[0], " ")
 
 	httpMethod := HttpMethod{
@@ -27,10 +45,20 @@ func ParseRequest(requestContent string) *RequestHeader {
 		protocol: strings.TrimSpace(methodLine[2]),
 	}
 
+	var host string
+	var userAgent string
+	if len(parsedRequest) > 1 {
+		fmt.Println("Im here")
+		host = strings.Split(parsedRequest[1], ": ")[1]
+		userAgent = strings.Split(parsedRequest[2], ": ")[1]
+	}
+	fmt.Println(host)
+	fmt.Println(userAgent)
+
 	return &RequestHeader{
 		method:    httpMethod,
-		host:      strings.Split(parsedRequest[1], ": ")[1],
-		userAgent: strings.Split(parsedRequest[2], ": ")[1],
+		host:      host,
+		userAgent: userAgent,
 	}
 }
 
