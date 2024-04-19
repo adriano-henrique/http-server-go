@@ -33,7 +33,6 @@ func ParseRequest(requestContent string) *RequestHeader {
 	if headerEndIndex != -1 {
 		header = requestContent[:headerEndIndex]
 	} else {
-		// If double newline is not found, consider the whole string as header
 		header = requestContent
 	}
 	parsedRequest := removeWhitespaceFromEOF(strings.Split(header, "\r\n"))
