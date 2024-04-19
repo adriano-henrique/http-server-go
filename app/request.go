@@ -15,6 +15,7 @@ type RequestHeader struct {
 	method    HttpMethod
 	host      string
 	userAgent string
+	body      string
 }
 
 func removeWhitespaceFromEOF(list []string) []string {
@@ -29,6 +30,8 @@ func removeWhitespaceFromEOF(list []string) []string {
 
 func ParseRequest(requestContent string) *RequestHeader {
 	headerEndIndex := strings.Index(requestContent, "\r\n\r\n")
+	beginningBodyIndex := headerEndIndex + 4
+	endRequest := strings.Index(requestContent, "\x00")
 	var header string
 	if headerEndIndex != -1 {
 		header = requestContent[:headerEndIndex]
@@ -47,7 +50,6 @@ func ParseRequest(requestContent string) *RequestHeader {
 	var host string
 	var userAgent string
 	if len(parsedRequest) > 1 {
-		fmt.Println("Im here")
 		host = strings.Split(parsedRequest[1], ": ")[1]
 		userAgent = strings.Split(parsedRequest[2], ": ")[1]
 	}
@@ -58,6 +60,7 @@ func ParseRequest(requestContent string) *RequestHeader {
 		method:    httpMethod,
 		host:      host,
 		userAgent: userAgent,
+		body:      string(requestContent[beginningBodyIndex:endRequest]),
 	}
 }
 

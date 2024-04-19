@@ -51,7 +51,7 @@ func handleConnection(conn net.Conn, directory string) {
 	} else if strings.HasPrefix(path, "/user-agent") {
 		response = handleUserAgent(requestHeader.userAgent)
 	} else if strings.HasPrefix(path, "/files") {
-		response = handleGetFileContents(path, directory)
+		response = handleFileEP(path, directory, requestHeader.method.verb, requestHeader.body)
 	} else {
 		response = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
 	}
@@ -78,37 +78,48 @@ func handleEcho(url string) []byte {
 	return []byte(outputString)
 }
 
-func handleGetFileContents(urlParams string, directory string) []byte {
+func handleFileEP(urlParams string, directory string, verb string, data string) []byte {
 	file := strings.Split(urlParams, "/")[2]
 	if directory == "" {
 		return []byte(buildErrorResponse("Should pass directory to command"))
 	}
 
-	dir, err := os.Open(directory)
-	if err != nil {
-		fmt.Println(err)
-		return []byte(buildErrorResponse(err.Error()))
-	}
-	files, err := dir.Readdir(0)
-	if err != nil {
-		fmt.Println(err)
-		return []byte(buildErrorResponse(err.Error()))
-	}
-	var hasMatch bool
-	for _, v := range files {
-		if !v.IsDir() && v.Name() == file {
-			hasMatch = true
+	var outputString string
+	if verb == "GET" {
+		dir, err := os.Open(directory)
+		if err != nil {
+			fmt.Println(err)
+			return []byte(buildErrorResponse(err.Error()))
 		}
-	}
-	if !hasMatch {
-		return []byte(buildErrorResponse("File is not on directory"))
+		files, err := dir.Readdir(0)
+		if err != nil {
+			fmt.Println(err)
+			return []byte(buildErrorResponse(err.Error()))
+		}
+		var hasMatch bool
+		for _, v := range files {
+			if !v.IsDir() && v.Name() == file {
+				hasMatch = true
+			}
+		}
+		if !hasMatch {
+			return []byte(buildErrorResponse("File is not on directory"))
+		}
+		fileContent, err := os.ReadFile(directory + file)
+		if err != nil {
+			return []byte(buildErrorResponse(err.Error()))
+		}
+		outputString = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-length: %d\r\n\r\n%s\r\n", len(fileContent), fileContent)
+	} else {
+		f, err := os.Create(directory + file)
+		if err != nil {
+			return []byte(buildErrorResponse(err.Error()))
+		}
+		f.Write([]byte(data))
+		defer f.Close()
+		outputString = fmt.Sprintf("HTTP/1.1 201 OK\r\nContent-Type: application/octet-stream\r\nContent-length: %d\r\n\r\n%s\r\n", len(data), data)
 	}
 
-	fileContent, err := os.ReadFile(directory + file)
-	if err != nil {
-		return []byte(buildErrorResponse(err.Error()))
-	}
-	outputString := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-length: %d\r\n\r\n%s\r\n", len(fileContent), fileContent)
 	return []byte(outputString)
 }
 
